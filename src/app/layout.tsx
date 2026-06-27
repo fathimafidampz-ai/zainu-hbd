@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Playfair_Display, Caveat, Dancing_Script } from "next/font/google";
+import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -42,8 +43,8 @@ export default function RootLayout({
       lang="en"
       className={`${poppins.variable} ${playfair.variable} ${caveat.variable} ${dancingScript.variable} scroll-smooth dark`}
     >
-      <body className="font-sans bg-[#0B1120] text-slate-100 min-h-screen selection:bg-purple-500 selection:text-white overflow-x-hidden antialiased">
-        {children}
+      <body className="font-sans min-h-screen selection:bg-purple-500 selection:text-white overflow-x-hidden antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
