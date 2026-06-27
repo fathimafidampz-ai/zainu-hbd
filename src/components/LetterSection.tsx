@@ -22,13 +22,13 @@ export const LetterSection: React.FC = () => {
     { id: 12, text: "I love you more than words can express. ❤️", isSign: true },
   ];
 
-  // Framer Motion Variants for Fast Word-by-Word Animation
+  // Framer Motion Variants for Word-by-Word Animation
   const letterContainerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2, // Stagger paragraphs
+        staggerChildren: 0.35, // Stagger paragraphs smoothly
       },
     },
   };
@@ -38,7 +38,7 @@ export const LetterSection: React.FC = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.04, // Fast word-by-word typing speed!
+        staggerChildren: 0.09, // Slower natural handwritten speed
       },
     },
   };
@@ -51,7 +51,7 @@ export const LetterSection: React.FC = () => {
       filter: "blur(0px)",
       scale: 1,
       transition: {
-        duration: 0.15,
+        duration: 0.25,
       },
     },
   };
