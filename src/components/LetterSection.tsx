@@ -1,13 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion, Variants } from "framer-motion";
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Mail, Heart, Edit3, Sparkles, RotateCcw } from "lucide-react";
 
-export const LetterSection: React.FC = () => {
-  const [replayKey, setReplayKey] = useState(0);
+interface ParagraphItem {
+  id: number;
+  text: string;
+  isHeading?: boolean;
+  isSubHeading?: boolean;
+  isSign?: boolean;
+  isQuote?: boolean;
+  isStrong?: boolean;
+  highlight?: boolean;
+}
 
-  const paragraphs = [
+export const LetterSection: React.FC = () => {
+  const paragraphs: ParagraphItem[] = [
     { id: 1, text: "Dear Brother,", isHeading: true },
     { id: 2, text: "I know this birthday wish is late, but my gratitude for you never will be.", highlight: true },
     { id: 3, text: "You have given me strength when I had none." },
@@ -22,38 +31,29 @@ export const LetterSection: React.FC = () => {
     { id: 12, text: "I love you more than words can express. ❤️", isSign: true },
   ];
 
-  // Framer Motion Variants for Word-by-Word Animation
-  const letterContainerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.35, // Stagger paragraphs smoothly
-      },
-    },
-  };
+  // Calculate total number of words across the letter
+  const flatWords = paragraphs.flatMap((p) =>
+    p.text.split(" ").map((word) => ({ paragraphId: p.id, word }))
+  );
 
-  const paragraphVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.09, // Slower natural handwritten speed
-      },
-    },
-  };
+  const [visibleWordCount, setVisibleWordCount] = useState(1);
+  const [isWriting, setIsWriting] = useState(true);
 
-  const wordVariants: Variants = {
-    hidden: { opacity: 0, y: 8, filter: "blur(4px)", scale: 0.9 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      filter: "blur(0px)",
-      scale: 1,
-      transition: {
-        duration: 0.25,
-      },
-    },
+  // Strictly sequential word-by-word timer
+  useEffect(() => {
+    if (visibleWordCount < flatWords.length) {
+      const timer = setTimeout(() => {
+        setVisibleWordCount((prev) => prev + 1);
+      }, 140); // 140ms per word = comfortable, strictly one-by-one writing pace!
+      return () => clearTimeout(timer);
+    } else {
+      setIsWriting(false);
+    }
+  }, [visibleWordCount, flatWords.length]);
+
+  const handleReplay = () => {
+    setVisibleWordCount(1);
+    setIsWriting(true);
   };
 
   return (
@@ -74,23 +74,22 @@ export const LetterSection: React.FC = () => {
           </h2>
           <div className="flex items-center justify-center gap-4">
             <p className="text-slate-400 text-base sm:text-lg flex items-center gap-2">
-              <span>Written word by word</span>
+              <span>Writing strictly word by word</span>
               <Edit3 className="w-4 h-4 text-amber-400 animate-bounce" />
             </p>
             <button
-              onClick={() => setReplayKey((prev) => prev + 1)}
-              className="px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 hover:border-amber-400/50 text-slate-300 hover:text-amber-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+              onClick={handleReplay}
+              className="px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 hover:border-amber-400/50 text-slate-300 hover:text-amber-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
               title="Replay Handwritten Animation"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Replay</span>
+              <span>Replay Animation</span>
             </button>
           </div>
         </motion.div>
 
         {/* Premium Glass Card Letter */}
         <motion.div
-          key={replayKey}
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6 }}
@@ -100,25 +99,39 @@ export const LetterSection: React.FC = () => {
             <Heart className="w-72 h-72" />
           </div>
 
-          <motion.div
-            variants={letterContainerVariants}
-            initial="hidden"
-            animate="visible"
-            className="relative z-10 max-w-2xl mx-auto space-y-6"
-          >
+          <div className="relative z-10 max-w-2xl mx-auto space-y-6">
             {paragraphs.map((p) => {
-              const words = p.text.split(" ");
+              const allWordsInP = p.text.split(" ");
+              
+              // Determine how many words of this specific paragraph are visible
+              // based on global visibleWordCount
+              let wordsSoFarInPreviousParagraphs = 0;
+              for (const prevP of paragraphs) {
+                if (prevP.id === p.id) break;
+                wordsSoFarInPreviousParagraphs += prevP.text.split(" ").length;
+              }
+
+              const visibleWordsInThisP = Math.max(
+                0,
+                Math.min(allWordsInP.length, visibleWordCount - wordsSoFarInPreviousParagraphs)
+              );
+
+              if (visibleWordsInThisP <= 0) return null;
+
+              const wordsToRender = allWordsInP.slice(0, visibleWordsInThisP);
 
               return (
-                <motion.div
-                  key={p.id}
-                  variants={paragraphVariants}
-                  className="relative"
-                >
+                <div key={p.id} className="relative">
                   {p.isHeading && (
                     <h3 className="text-3xl sm:text-5xl font-handwritten-script font-bold gold-gradient-text tracking-wide mb-6 flex flex-wrap gap-x-2 gap-y-1">
-                      {words.map((word, i) => (
-                        <motion.span key={i} variants={wordVariants} className="inline-block">
+                      {wordsToRender.map((word, i) => (
+                        <motion.span
+                          key={i}
+                          initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-block"
+                        >
                           {word}
                         </motion.span>
                       ))}
@@ -127,8 +140,14 @@ export const LetterSection: React.FC = () => {
 
                   {p.isSubHeading && (
                     <h4 className="text-2xl sm:text-4xl font-handwritten-script font-bold text-amber-300 tracking-wide mt-8 flex flex-wrap gap-x-2 gap-y-1">
-                      {words.map((word, i) => (
-                        <motion.span key={i} variants={wordVariants} className="inline-block">
+                      {wordsToRender.map((word, i) => (
+                        <motion.span
+                          key={i}
+                          initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-block"
+                        >
                           {word}
                         </motion.span>
                       ))}
@@ -137,8 +156,14 @@ export const LetterSection: React.FC = () => {
 
                   {p.isSign && (
                     <p className="text-2xl sm:text-4xl font-handwritten-script font-semibold text-pink-300 mt-2 flex flex-wrap gap-x-2 gap-y-1">
-                      {words.map((word, i) => (
-                        <motion.span key={i} variants={wordVariants} className="inline-block">
+                      {wordsToRender.map((word, i) => (
+                        <motion.span
+                          key={i}
+                          initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-block"
+                        >
                           {word}
                         </motion.span>
                       ))}
@@ -147,8 +172,14 @@ export const LetterSection: React.FC = () => {
 
                   {p.isQuote && (
                     <blockquote className="my-4 py-3 px-5 border-l-4 border-amber-400/80 bg-amber-500/10 rounded-r-2xl font-handwritten text-2xl sm:text-3xl text-amber-200 leading-relaxed shadow-inner flex flex-wrap gap-x-2 gap-y-1">
-                      {words.map((word, i) => (
-                        <motion.span key={i} variants={wordVariants} className="inline-block">
+                      {wordsToRender.map((word, i) => (
+                        <motion.span
+                          key={i}
+                          initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-block"
+                        >
                           {word}
                         </motion.span>
                       ))}
@@ -157,8 +188,14 @@ export const LetterSection: React.FC = () => {
 
                   {p.isStrong && (
                     <p className="font-handwritten text-3xl sm:text-4xl font-bold text-white tracking-wide my-3 flex flex-wrap gap-x-2 gap-y-1">
-                      {words.map((word, i) => (
-                        <motion.span key={i} variants={wordVariants} className="inline-block">
+                      {wordsToRender.map((word, i) => (
+                        <motion.span
+                          key={i}
+                          initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-block"
+                        >
                           {word}
                         </motion.span>
                       ))}
@@ -171,28 +208,44 @@ export const LetterSection: React.FC = () => {
                         p.highlight ? "text-amber-300 font-semibold" : "text-slate-200"
                       }`}
                     >
-                      {words.map((word, i) => (
-                        <motion.span key={i} variants={wordVariants} className="inline-block">
+                      {wordsToRender.map((word, i) => (
+                        <motion.span
+                          key={i}
+                          initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-block"
+                        >
                           {word}
                         </motion.span>
                       ))}
                     </p>
                   )}
-                </motion.div>
+                </div>
               );
             })}
 
-            {/* Glowing Ink Pen Status Indicator */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 2.5 }}
-              className="inline-flex items-center gap-2 text-amber-400 font-handwritten text-xl pt-2"
-            >
-              <Sparkles className="w-5 h-5 text-amber-400 animate-spin" />
-              <span>Forever written in my heart</span>
-            </motion.div>
-          </motion.div>
+            {/* Glowing Ink Pen Cursor indicator while writing */}
+            {isWriting ? (
+              <motion.div
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 0.6, repeat: Infinity }}
+                className="inline-flex items-center gap-2 text-amber-400 font-handwritten text-xl pt-2"
+              >
+                <Sparkles className="w-5 h-5 text-amber-400 animate-spin" />
+                <span>Writing word by word...</span>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="inline-flex items-center gap-2 text-amber-300 font-handwritten text-xl pt-2"
+              >
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                <span>Forever written in my heart</span>
+              </motion.div>
+            )}
+          </div>
         </motion.div>
       </div>
     </section>
